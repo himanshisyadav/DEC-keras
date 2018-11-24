@@ -97,7 +97,9 @@ def load_mnist():
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     x = np.concatenate((x_train, x_test))
     y = np.concatenate((y_train, y_test))
+    print(x.shape)
     x = x.reshape((x.shape[0], -1))
+    print(x.shape)
     x = np.divide(x, 255.)
     print('MNIST samples', x.shape)
     return x, y
@@ -275,9 +277,7 @@ def load_cifar10(data_path='./data/cifar10'):
 
 
 def load_stl(data_path='./data/stl'):
-    import os
-    assert os.path.exists(data_path + '/stl_features.npy') or not os.path.exists(data_path + '/train_X.bin'), \
-        "No data! Use %s/get_data.sh to get data ready, then come back" % data_path
+    import os   
 
     # get labels
     y1 = np.fromfile(data_path + '/train_y.bin', dtype=np.uint8) - 1
@@ -309,6 +309,22 @@ def load_stl(data_path='./data/stl'):
     return features, y
 
 
+def load_pavia(data_path='./data/HSI_Data/HSI_Data'):
+    import scipy.io
+    import os
+    np.seterr(divide='ignore', invalid='ignore')
+    x = scipy.io.loadmat(os.path.join(data_path + '/Pavia.mat'))
+    x = x['pavia']
+    y = scipy.io.loadmat(os.path.join(data_path + '/Pavia_gt.mat'))
+    y = y['pavia_gt']
+    x = x.reshape((x.shape[0] * x.shape[1], x.shape[2]))
+    x = np.true_divide(x, np.tile(np.sqrt(sum(np.multiply(x, x[0,:]))), (x.shape[0],1)))
+    y = y.reshape((x.shape[0], -1))
+    print('Pavia data shape ', x.shape)
+    print('Pavia Ground Truth data shape ', y.shape)
+    return x, y
+
+
 def load_data(dataset_name):
     if dataset_name == 'mnist':
         return load_mnist()
@@ -322,6 +338,8 @@ def load_data(dataset_name):
         return load_reuters()
     elif dataset_name == 'stl':
         return load_stl()
+    elif dataset_name == 'pavia':
+        return load_pavia()
     else:
         print('Not defined for loading', dataset_name)
         exit(0)
