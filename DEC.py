@@ -272,7 +272,7 @@ if __name__ == "__main__":
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--dataset', default='mnist',
                         choices=['mnist', 'fmnist', 'usps', 'reuters10k', 'stl'])
-    parser.add_argument('--batch_size', default=256, type=int)
+    parser.add_argument('--batch_size', default=10, type=int) #Changed originally from 256 to 10
     parser.add_argument('--maxiter', default=2e4, type=int)
     parser.add_argument('--pretrain_epochs', default=None, type=int)
     parser.add_argument('--update_interval', default=None, type=int)
