@@ -21,6 +21,10 @@ from keras import callbacks
 from keras.initializers import VarianceScaling
 from sklearn.cluster import KMeans
 import metrics
+import pdb
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 
 def autoencoder(dims, act='relu', init='glorot_uniform'):
@@ -138,7 +142,7 @@ class DEC(object):
         clustering_layer = ClusteringLayer(self.n_clusters, name='clustering')(self.encoder.output)
         self.model = Model(inputs=self.encoder.input, outputs=clustering_layer)
 
-    def pretrain(self, x, y=None, optimizer='adam', epochs=200, batch_size=256, save_dir='results/temp'):
+    def pretrain(self, x, y=None, optimizer='adam', epochs=200, batch_size=256, save_dir='results/temp', dataset= 'mnist', m = 83, n = 86):
         print('...Pretraining...')
         self.autoencoder.compile(optimizer=optimizer, loss='mse')
 
@@ -158,11 +162,16 @@ class DEC(object):
                                           self.model.get_layer(
                                               'encoder_%d' % (int(len(self.model.layers) / 2) - 1)).output)
                     features = feature_model.predict(self.x)
-                    km = KMeans(n_clusters=len(np.unique(self.y)), n_init=20, n_jobs=4)
+                    km = KMeans(n_clusters=len(np.unique(self.y)) , n_init=20, n_jobs=4)
                     y_pred = km.fit_predict(features)
-                    # print()
+                    # print("Shape of y Pred")
+                    # print(y_pred.shape)
+                    # print("shape of y True")
+                    # print(self.y.shape)
+                    # print("Computing Metrics")
+
                     print(' '*8 + '|==>  acc: %.4f,  nmi: %.4f  <==|'
-                          % (metrics.acc(self.y, y_pred), metrics.nmi(self.y, y_pred)))
+                          % (metrics.acc(self.y, y_pred, dataset,0, m,n), metrics.nmi(self.y, y_pred)))
 
             cb.append(PrintACC(x, y))
 
@@ -193,7 +202,7 @@ class DEC(object):
         self.model.compile(optimizer=optimizer, loss=loss)
 
     def fit(self, x, y=None, maxiter=2e4, batch_size=256, tol=1e-3,
-            update_interval=140, save_dir='./results/temp'):
+            update_interval=140, save_dir='./results/temp', dataset= 'mnist', m= 83,n=86):
 
         print('Update interval', update_interval)
         save_interval = int(x.shape[0] / batch_size) * 5  # 5 epochs
@@ -225,7 +234,7 @@ class DEC(object):
                 # evaluate the clustering performance
                 y_pred = q.argmax(1)
                 if y is not None:
-                    acc = np.round(metrics.acc(y, y_pred), 5)
+                    acc = np.round(metrics.acc(y, y_pred, dataset,0, m,n), 5)
                     nmi = np.round(metrics.nmi(y, y_pred), 5)
                     ari = np.round(metrics.ari(y, y_pred), 5)
                     loss = np.round(loss, 5)
@@ -271,8 +280,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--dataset', default='mnist',
-                        choices=['mnist', 'fmnist', 'usps', 'reuters10k', 'stl'])
-    parser.add_argument('--batch_size', default=10, type=int) #Changed originally from 256 to 10
+                        choices=['mnist', 'fmnist', 'usps', 'reuters10k', 'stl', 'pavia','salinas', 'indian_pines','ksc'])
+    parser.add_argument('--batch_size', default=256, type=int) #Changed originally from 256 to 10
     parser.add_argument('--maxiter', default=2e4, type=int)
     parser.add_argument('--pretrain_epochs', default=None, type=int)
     parser.add_argument('--update_interval', default=None, type=int)
@@ -287,8 +296,13 @@ if __name__ == "__main__":
 
     # load dataset
     from datasets import load_data
-    x, y = load_data(args.dataset)
+    x, y, m, n= load_data(args.dataset)
     n_clusters = len(np.unique(y))
+
+    # y_true_new = [y[i] for i in range(len(y)) if y[i] > 0]
+
+    # y = y_true_new
+    # y = np.array(y)
 
     init = 'glorot_uniform'
     pretrain_optimizer = 'adam'
@@ -311,26 +325,68 @@ if __name__ == "__main__":
     elif args.dataset == 'stl':
         update_interval = 30
         pretrain_epochs = 10
+    elif args.dataset == 'pavia':
+        update_interval = 30
+        pretrain_epochs = 10
+    elif args.dataset == 'salinas':
+        update_interval = 30
+        pretrain_epochs = 10        
+    elif args.dataset == 'indian_pines':
+        update_interval = 30
+        pretrain_epochs = 10
+    elif args.dataset == 'ksc':
+        update_interval = 30
+        pretrain_epochs = 10
 
     if args.update_interval is not None:
         update_interval = args.update_interval
     if args.pretrain_epochs is not None:
         pretrain_epochs = args.pretrain_epochs
 
+
+    old_classes = np.unique(y)
+
+    old_classes = old_classes.tolist()
+
+    num_classes = len(np.unique(y))
+
+    new_classes = np.arange(num_classes)
+
+    new_classes = new_classes.tolist()
+
+
+    # pdb.set_trace()
+
+
+    if not (np.array_equal(old_classes,new_classes)):
+        for i in range(y.size):
+            index = old_classes.index(y[i])
+            y[i] = new_classes[index]
+
     # prepare the DEC model
     dec = DEC(dims=[x.shape[-1], 500, 500, 2000, 10], n_clusters=n_clusters, init=init)
 
-    if args.ae_weights is None:
-        dec.pretrain(x=x, y=y, optimizer=pretrain_optimizer,
-                     epochs=pretrain_epochs, batch_size=args.batch_size,
-                     save_dir=args.save_dir)
-    else:
-        dec.autoencoder.load_weights(args.ae_weights)
+    final_metrics = np.zeros((10,2))
 
-    dec.model.summary()
-    t0 = time()
-    dec.compile(optimizer=SGD(0.01, 0.9), loss='kld')
-    y_pred = dec.fit(x, y=y, tol=args.tol, maxiter=args.maxiter, batch_size=args.batch_size,
-                     update_interval=update_interval, save_dir=args.save_dir)
-    print('acc:', metrics.acc(y, y_pred))
-    print('clustering time: ', (time() - t0))
+    for i in range(10):
+        if args.ae_weights is None:   
+            dec.pretrain(x=x, y=y, optimizer=pretrain_optimizer,
+                         epochs=pretrain_epochs, batch_size=args.batch_size,
+                         save_dir=args.save_dir, dataset =args.dataset, m= m, n= n)
+        else:
+            dec.autoencoder.load_weights(args.ae_weights)
+
+        dec.model.summary()
+        t0 = time()
+        dec.compile(optimizer=SGD(0.01, 0.9), loss='kld')
+        y_pred = dec.fit(x, y=y, tol=args.tol, maxiter=args.maxiter, batch_size=args.batch_size,
+                         update_interval=update_interval, save_dir=args.save_dir, dataset = args.dataset, m = m, n= n)
+        print('acc:', metrics.acc(y, y_pred, args.dataset,1, m,n))
+        print('clustering time: ', (time() - t0))
+        final_metrics[i,0] = metrics.acc(y, y_pred, args.dataset,0,m,n)
+        final_metrics[i,1] = (time() - t0)
+
+    print(final_metrics)
+    print("Mean Accuracies and Time over 10 runs")
+    print(np.mean(final_metrics, axis=0))
+    
