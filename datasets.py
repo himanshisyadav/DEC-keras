@@ -1,4 +1,10 @@
 import numpy as np
+from numpy import linalg as LA
+import matplotlib
+import time
+matplotlib.use('Agg')
+import pdb
+import matplotlib.pyplot as plt
 
 
 def extract_vgg16_features(x):
@@ -102,6 +108,7 @@ def load_mnist():
     print(x.shape)
     x = np.divide(x, 255.)
     print('MNIST samples', x.shape)
+    print('MNIST Ground Truth', y.shape)
     return x, y
 
 
@@ -315,14 +322,81 @@ def load_pavia(data_path='./data/HSI_Data/HSI_Data'):
     np.seterr(divide='ignore', invalid='ignore')
     x = scipy.io.loadmat(os.path.join(data_path + '/Pavia.mat'))
     x = x['pavia']
+    m = x.shape[0]
+    n = x.shape[1]
     y = scipy.io.loadmat(os.path.join(data_path + '/Pavia_gt.mat'))
     y = y['pavia_gt']
     x = x.reshape((x.shape[0] * x.shape[1], x.shape[2]))
     x = np.true_divide(x, np.tile(np.sqrt(sum(np.multiply(x, x[0,:]))), (x.shape[0],1)))
+    # x = np.true_divide(x, LA.norm(x[:,1], 0))
     y = y.reshape((x.shape[0], -1))
+    y = y.reshape((y.shape[0],))
     print('Pavia data shape ', x.shape)
     print('Pavia Ground Truth data shape ', y.shape)
-    return x, y
+    return x, y, m, n
+
+def load_salinas(data_path=''):
+    import scipy.io
+    import os
+    # np.seterr(divide='ignore', invalid='ignore')
+    x = scipy.io.loadmat('SalinasA_smallNoise.mat')
+    x = x['X']    
+    
+    y = scipy.io.loadmat('SalinasA_gt.mat')
+    y = y['salinasA_gt']
+    # plt.imsave("spatial_results/{}_salinas_fig_initial_gt.png" .format(timestr), image)
+    np.transpose(x, (1, 0, 2)).shape
+    m = x.shape[0]
+    n = x.shape[1]
+    x = abs(x)
+    x = x.reshape((x.shape[0] * x.shape[1], x.shape[2]))
+    x = np.true_divide(x, np.tile(np.sqrt(sum(np.multiply(x, x[0,:]))), (x.shape[0],1)))
+    # x = np.true_divide(x, LA.norm(x[:,1], 0))
+    y = y.reshape((x.shape[0], -1))
+    y = y.reshape((y.shape[0],))
+    print('Salinas data shape ', x.shape)
+    print('Salinas Ground Truth data shape ', y.shape)    
+    return x, y, m, n
+
+
+def load_indian_pines(data_path=''):
+    import scipy.io
+    import os
+    np.seterr(divide='ignore', invalid='ignore')
+    x = scipy.io.loadmat('Indian_pines.mat')
+    x = x['indian_pines']
+    m = x.shape[0]
+    n = x.shape[1]
+    y = scipy.io.loadmat('Indian_pines_gt.mat')
+    y = y['indian_pines_gt']
+    x = x.reshape((x.shape[0] * x.shape[1], x.shape[2]))
+    x = np.true_divide(x, np.tile(np.sqrt(sum(np.multiply(x, x[0,:]))), (x.shape[0],1)))
+    # x = np.true_divide(x, LA.norm(x[:,1], 0))
+    y = y.reshape((x.shape[0], -1))
+    y = y.reshape((y.shape[0],))
+    print('Indian Pines data shape ', x.shape)
+    print('Indian Pines Ground Truth data shape ', y.shape)
+    return x, y, m, n
+
+def load_ksc(data_path=''):
+    import scipy.io
+    import os
+    np.seterr(divide='ignore', invalid='ignore')
+    x = scipy.io.loadmat('KSC.mat')
+    x = x['KSC']
+    m = x.shape[0]
+    n = x.shape[1]
+    y = scipy.io.loadmat('KSC_gt.mat')
+    y = y['KSC_gt']
+    x = x.reshape((x.shape[0] * x.shape[1], x.shape[2]))
+    x = np.true_divide(x, np.tile(np.sqrt(sum(np.multiply(x, x[0,:]))), (x.shape[0],1)))
+    # x = np.true_divide(x, LA.norm(x[:,1], 0))
+    y = y.reshape((x.shape[0], -1))
+    y = y.reshape((y.shape[0],))
+    print('KSC data shape ', x.shape)
+    print('KSC Ground Truth data shape ', y.shape)
+    print("m, n", m,n)
+    return x, y, m, n
 
 
 def load_data(dataset_name):
@@ -340,6 +414,13 @@ def load_data(dataset_name):
         return load_stl()
     elif dataset_name == 'pavia':
         return load_pavia()
+    elif dataset_name == 'salinas':
+        return load_salinas()
+    elif dataset_name == 'indian_pines':
+        return load_indian_pines()
+    elif dataset_name == 'ksc':
+        return load_ksc()
+
     else:
         print('Not defined for loading', dataset_name)
         exit(0)
